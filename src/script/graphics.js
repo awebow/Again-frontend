@@ -30,7 +30,7 @@ export class Graphics {
      */
     constructor(canvas) {
         // 캔버스 초기화
-        this.gl = canvas.getContext('webgl');
+        this.gl = canvas.getContext('webgl') || canvas.getContext("experimental-webgl");;
         this.gl.viewport(0, 0, canvas.width, canvas.height);
 
         this.render = function(deltaTime) {}; // 렌더링 메소드
