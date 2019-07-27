@@ -115,7 +115,7 @@ export class Graphics {
 
     /**
      * 셰이더 프로그램 생성.
-     * @param {Strubg} vertexSrc Vertex 셰이더 소스.
+     * @param {String} vertexSrc Vertex 셰이더 소스.
      * @param {String} fragmentSrc Fragment 셰이더 소스.
      */
     createProgram(vertexSrc, fragmentSrc) {
