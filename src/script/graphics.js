@@ -115,8 +115,8 @@ export class Graphics {
 
     /**
      * 셰이더 프로그램 생성.
-     * @param {*} vertexSrc Vertex 셰이더 소스.
-     * @param {*} fragmentSrc Fragment 셰이더 소스.
+     * @param {Strubg} vertexSrc Vertex 셰이더 소스.
+     * @param {String} fragmentSrc Fragment 셰이더 소스.
      */
     createProgram(vertexSrc, fragmentSrc) {
         var vertexShader = createShader(this.gl, this.gl.VERTEX_SHADER, vertexSrc);
@@ -140,7 +140,7 @@ export class Graphics {
 
     /**
      * 텍스쳐 로드.
-     * @param {*} src 이미지 URL.
+     * @param {String} src 이미지 URL.
      */
     loadTexture(src) {
         let texture = this.gl.createTexture();
@@ -151,6 +151,8 @@ export class Graphics {
             image.onload = function() {
                 self.gl.bindTexture(self.gl.TEXTURE_2D, texture);
                 self.gl.texImage2D(self.gl.TEXTURE_2D, 0, self.gl.RGBA, self.gl.RGBA, self.gl.UNSIGNED_BYTE, image);
+                self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_WRAP_S, self.gl.CLAMP_TO_EDGE);
+                self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_WRAP_T, self.gl.CLAMP_TO_EDGE);
                 self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_MAG_FILTER, self.gl.LINEAR);
                 self.gl.texParameteri(self.gl.TEXTURE_2D, self.gl.TEXTURE_MIN_FILTER, self.gl.LINEAR);
                 self.gl.bindTexture(self.gl.TEXTURE_2D, null);
@@ -163,10 +165,10 @@ export class Graphics {
 
     /**
      * 카메라 설정.
-     * @param {*} centerX 카메라 중심 X 좌표.
-     * @param {*} centerY 카메라 중심 Y 좌표.
-     * @param {*} width 카메라 가로 크기.
-     * @param {*} height 카메라 세로 크기.
+     * @param {Number} centerX 카메라 중심 X 좌표.
+     * @param {Number} centerY 카메라 중심 Y 좌표.
+     * @param {Number} width 카메라 가로 크기.
+     * @param {Number} height 카메라 세로 크기.
      */
     setCamera(centerX, centerY, width, height) {
         this.camera.center.x = centerX;
@@ -192,18 +194,22 @@ export class Graphics {
     /**
      * 텍스쳐 그리기.
      * @param {*} texture 텍스쳐.
-     * @param {*} x X 좌표.
-     * @param {*} y Y 좌표.
-     * @param {*} width 가로 크기.
-     * @param {*} height 세로 크기.
+     * @param {Number} x X 좌표.
+     * @param {Number} y Y 좌표.
+     * @param {Number} width 가로 크기.
+     * @param {Number} height 세로 크기.
+     * @param {Number} rotation 회전 각도.
      */
-    drawTexture(texture, x, y, width, height) {
+    drawTexture(texture, x, y, width, height, rotation=0) {
         // 셰이더 프로그램을 텍스쳐 셰이더로 설정.
         this.gl.useProgram(this.textureShader);
 
         // Boundary에 맞춰 Transform 행렬 생성.
         var transform = mat4.create();
         mat4.translate(transform, this.model, [x, y, 0]);
+        mat4.translate(transform, transform, [width / 2, height / 2, 0]);
+        mat4.rotateZ(transform, transform, rotation);
+        mat4.translate(transform, transform, [-width / 2, -height / 2, 0]);
         mat4.scale(transform, transform, [width, height, 1]);
 
         // Model View 행렬 계산.
@@ -231,6 +237,124 @@ export class Graphics {
 
         // 셰이더 설정 해제.
         this.gl.useProgram(null);
+    }
+
+}
+
+/**
+ * draw() 메소드를 통해 화면에 그릴 수 있는 요소.
+ */
+export class Drawable {
+
+    /**
+     * Drawable 생성.
+     * @param {Graphics} graphics Graphics 인스턴스.
+     */
+    constructor(graphics) {
+        this.graphics = graphics;
+    }
+
+    /**
+     * Drawable을 화면에 그린다.
+     */
+    draw() {}
+
+}
+
+/**
+ * 위치, 크기, 회전을 통해 그려지는 텍스쳐.
+ */
+export class Sprite extends Drawable {
+
+    /**
+     * Sprite 생성.
+     * @param {Graphics} graphics Graphics 인스턴스.
+     * @param {*} texture 텍스쳐.
+     */
+    constructor(graphics, texture) {
+        super(graphics);
+        this.texture = texture;
+
+        this.x = 0;
+        this.y = 0;
+        this.width = 1;
+        this.height = 1;
+        this.rotation = 0;
+    }
+
+    draw() {
+        this.graphics.drawTexture(this.texture, this.x, this.y, this.width, this.height, this.rotation);
+    }
+
+    /**
+     * 중심 좌표 설정.
+     * @param {Number} x 
+     * @param {Number} y 
+     */
+    setCenter(x, y) {
+        this.x = x - this.width / 2;
+        this.y = y - this.height / 2;
+    }
+
+    /**
+     * 중심 X 좌표 설정.
+     * @param {Number} x 
+     */
+    setCenterX(x) {
+        this.x = x - this.width / 2;
+    }
+
+    /**
+     * 중심 Y 좌표 설정
+     * @param {Number} y 
+     */
+    setCenterY(y) {
+        this.y = y - this.height / 2;
+    }
+
+}
+
+/**
+ * 특정 Transform 행렬이 적용되는 Drawable의 그룹.
+ */
+export class LocalGroup extends Drawable {
+
+    /**
+     * LocalGroup 생성.
+     * @param {Graphics} graphics 
+     */
+    constructor(graphics) {
+        super(graphics);
+
+        this.drawables = [];
+
+        this.translation = {
+            x: 0,
+            y: 0
+        };
+
+        this.scale = {
+            x: 1,
+            y: 1
+        };
+
+        this.rotation = 0;
+    }
+
+    draw() {
+        var transform = mat4.create();
+        mat4.translate(transform, this.graphics.model, [this.translation.x, this.translation.y, 0]);
+        mat4.rotateZ(transform, transform, this.rotation);
+        mat4.scale(transform, transform, [this.scale.x, this.scale.y, 1]);
+
+        var model = this.graphics.model;
+        this.graphics.model = transform;
+
+        for(let drawable of this.drawables) {
+            drawable.draw();
+        }
+
+        this.graphics.model = model;
     }
 
 }
